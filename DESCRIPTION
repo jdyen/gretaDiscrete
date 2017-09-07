@@ -1,0 +1,15 @@
+Package: gretaDiscrete
+Type: Package
+Title: Sampling from discrete random variables in greta
+Version: 0.1.0
+Date: 2017-09-08
+Author: Jian Yen
+Maintainer: Jian Yen <jdl.yen@gmail.com> 
+Description: A greta extension module providing samplers and functions to support discrete random variables in greta models.
+License: Apache License 2.0
+Imports: tensorflow
+Depends: greta (>= 0.2.1)
+Suggests: testthat
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
