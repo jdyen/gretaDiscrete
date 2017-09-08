@@ -32,7 +32,6 @@ y <- pred_vals %*% beta_vals + rnorm(n_obs, mean = 0.0, sd = 0.5)
 I <- variable(dim = (num_vars + 1)) # dummy variable for a discrete variable (with no prior)
 beta_sd <- I * 100.0 + (1 - I) * 0.01
 beta_est <- normal(mean = zeros(num_vars + 1), sd = beta_sd, dim = (num_vars + 1))
-#beta_est <- I * beta_tmp
 mu <- pred_vals %*% beta_est
 distribution(y) <- normal(mu, sd = (sd(y) / 2))
 
