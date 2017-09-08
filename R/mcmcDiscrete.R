@@ -1,3 +1,6 @@
+# only handles binary discrete vars
+# not clear how to add priors to these variables
+# uses a slice sampler with latent continuous variable z (ifelse(z > 0, 1, 0))
 mcmcDiscrete <- function (model,
                           discrete_vars,
                           n_samples = 1000,
@@ -300,7 +303,7 @@ samplerDiscrete <- function(dag,
         } else {
           r1 <- xs
         }
-        if ((r1 - r0) < 0.0001) {
+        if ((r1 - r0) < 0.0001) {  ## make this a threshold relative to magnitude of r values
           xs <- r0
           break
         }
