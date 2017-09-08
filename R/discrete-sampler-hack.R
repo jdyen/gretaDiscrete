@@ -12,7 +12,7 @@ source("./R/mcmcDiscrete.R")
 # general settings
 set.seed(1252105)
 n_obs <- 1000
-num_vars <- 20
+num_vars <- 100
 
 # predictors
 pred_vals <- matrix(rnorm(n_obs * num_vars), ncol = num_vars)
