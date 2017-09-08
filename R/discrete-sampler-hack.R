@@ -38,17 +38,10 @@ distribution(y) <- normal(mu, sd = (sd(y) / 2))
 m <- model(mu, beta_est, I)
 
 # sample from model
-samples <- mcmcDiscrete(m$dag,
-                        init = NULL,
+samples <- mcmcDiscrete(model = m,
                         discrete_vars = "I",
                         n_samples = 100,
-                        thin = 1,
-                        verbose = TRUE,
-                        pb = greta:::create_progress_bar("sampling", c(100, 100), 10),
-                        control = list(Lmin = 10,
-                                       Lmax = 20,
-                                       lower = -5.0,
+                        control = list(lower = -5.0,
                                        upper = 5.0,
                                        w_size = 0.5,
-                                       max_iter = 100,
-                                       epsilon = 0.005))
+                                       max_iter = 100))

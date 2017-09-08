@@ -1,46 +1,158 @@
-mcmcDiscreteWrapper <- function(m, warmup, n_samples) {
-  # create pb
-  pb <- greta:::create_progress_bar("warmup", c(n_burnin, n_samples), pb_update)
-  pb <- greta:::create_progress_bar("sampling", c(n_burnin, n_samples), pb_update)
+mcmcDiscrete <- function (model,
+                          discrete_vars,
+                          n_samples = 1000,
+                          thin = 1,
+                          warmup = 100,
+                          verbose = TRUE,
+                          pb_update = 10,
+                          control = list(),
+                          initial_values = NULL) {
+  
+  # find variable names to label samples
+  target_greta_arrays <- model$target_greta_arrays
+  names <- names(target_greta_arrays)
+  
+  # check they're not data nodes, provide a useful error message if they are
+  are_data <- vapply(target_greta_arrays,
+                     function (x) inherits(x$node, 'data_node'),
+                     FUN.VALUE = FALSE)
+  
+  if (any(are_data)) {
+    is_are <- ifelse(sum(are_data) == 1, 'is a data greta array', 'are data greta arrays')
+    bad_greta_arrays <- paste(names[are_data], collapse = ', ')
+    msg <- sprintf('%s %s, data greta arrays cannot be sampled',
+                   bad_greta_arrays,
+                   is_are)
+    stop (msg, call. = FALSE)
+  }
+  
+  # get the dag containing the target nodes
+  dag <- model$dag
+  
+  # random starting locations
+  if (is.null(initial_values)) {
+    
+    # try several times
+    valid <- FALSE
+    attempts <- 1
+    while (!valid & attempts < 10) {
+      
+      # find out which element corresponds to discrete variables
+      initial_values <- dag$example_parameters()
+      discrete_name <- sapply(discrete_vars, function(x) dag$tf_name(get(x)$node))
+      discrete <- grepl(paste(discrete_name, collapse = "|"), names(initial_values))
+      initial_values[!discrete] <- rnorm(sum(!discrete))
+      initial_values[discrete] <- rbinom(sum(discrete), 1, 0.5)
 
-  # switch between warmup/burnin/sampling
-  # do tuning
+      # increase the jitter each time
+      initial_values[!discrete] <- rnorm(sum(!discrete), 0, 1 + attempts / 5)
+      
+      # test validity of values
+      valid <- greta:::valid_parameters(dag, initial_values)
+      attempts <- attempts + 1
+      
+    }
+    
+    if (!valid) {
+      stop ('Could not find reasonable starting values after ', attempts,
+            ' attempts. Please specify initial values manually via the ',
+            'initial_values argument to mcmc',
+            call. = FALSE)
+    }
+  } else {
+    if (!greta:::valid_parameters(dag, initial_values)) {
+      stop ('The log density and gradients could not be evaluated at these ',
+            'initial values.',
+            call. = FALSE)
+    }
+  }
   
-  # initialise
+  # get default control options
+  con <- list(Lmin = 10,
+              Lmax = 20,
+              lower = -10.0,
+              upper = 10.0,
+              w_size = 1.0,
+              max_iter = 10000,
+              epsilon = 0.005)
   
+  
+  # update them with user overrides
+  con[names(control)] <- control
+  
+  # if warmup is required, do that now and update init
+  if (warmup > 0) {
+    
+    if (verbose)
+      pb_warmup <- greta:::create_progress_bar('warmup', c(warmup, n_samples), pb_update)
+    else
+      pb_warmup <- NULL
+    
+    # run it
+    warmup_draws <- samplerDiscrete(dag = dag,
+                                    init = initial_values,
+                                    discrete_vars = discrete_vars,
+                                    n_samples = warmup,
+                                    thin = thin,
+                                    verbose = verbose,
+                                    pb = pb_warmup,
+                                    tune = TRUE,
+                                    stash = FALSE,
+                                    control = con)
+    
+    # use the last draw of the full parameter vector as the init
+    initial_values <- attr(warmup_draws, 'last_x')
+    con <- attr(warmup_draws, 'control')
+    
+  }
+  
+  if (verbose)
+    pb_sampling <- greta:::create_progress_bar('sampling', c(warmup, n_samples), pb_update)
+  else
+    pb_sampling <- NULL
+  
+  # run the sampler
+  draws <- samplerDiscrete(dag = dag,
+                           init = initial_values,
+                           discrete_vars = discrete_vars,
+                           n_samples = n_samples,
+                           thin = thin,
+                           verbose = verbose,
+                           pb = pb_sampling,
+                           tune = FALSE,
+                           stash = TRUE,
+                           control = con)
+  
+  # if this was successful, trash the stash, prepare and return the draws
+  rm('trace_stash', envir = greta_stash)
+  greta:::prepare_draws(draws)
 }
 
-mcmcDiscrete <- function(dag,
-                         init,
-                         discrete_vars,
-                         n_samples,
-                         thin,
-                         verbose,
-                         pb,
-                         tune = FALSE,
-                         stash = FALSE,
-                         control = list(Lmin = 10,
-                                        Lmax = 20,
-                                        lower = -10.0,
-                                        upper = 10.0,
-                                        w_size = 1.0,
-                                        max_iter = 10000,
-                                        epsilon = 0.005)) {
+samplerDiscrete <- function(dag,
+                            init,
+                            discrete_vars,
+                            n_samples,
+                            thin,
+                            verbose,
+                            pb,
+                            tune = FALSE,
+                            stash = FALSE,
+                            control = list(Lmin = 10,
+                                           Lmax = 20,
+                                           lower = -10.0,
+                                           upper = 10.0,
+                                           w_size = 1.0,
+                                           max_iter = 10000,
+                                           epsilon = 0.005)) {
   # setup progress bar
   if (verbose) {
     greta:::iterate_progress_bar(pb = pb, it = 0, rejects = 0)
   }
   
-  # find out which element corresponds to discrete variables
-  discrete_name <- sapply(discrete_vars, function(x) dag$tf_name(get(x)$node))
-  params <- dag$example_parameters()
-  discrete <- grepl(paste(discrete_name, collapse = "|"), names(params))
-  
   # initialise parameters
-  if (is.null(init)) {
-    params[!discrete] <- rnorm(sum(!discrete))
-    params[discrete] <- rbinom(sum(discrete), 1, 0.5)
-  }
+  params <- init
+  discrete_name <- sapply(discrete_vars, function(x) dag$tf_name(get(x)$node))
+  discrete <- grepl(paste(discrete_name, collapse = "|"), names(params))
   
   ## setup continuous sampler
   # unpack options
