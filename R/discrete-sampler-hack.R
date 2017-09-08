@@ -1,28 +1,45 @@
 # hacking discrete variables into greta
-y <- rnorm(10)
+## set working directory
+setwd("~/Dropbox/Post-doc stuff/gretaDiscrete/")
 
-library (greta)
-x <- normal(0, 1)
-I <- variable() # dummy variable for a discrete variable (with no prior)
-mu <- x + 3 * I
-distribution(y) <- normal(mu, 1)
+## load packages
+library(greta)
+
+## source functions
+source("./R/mcmcDiscrete.R")
+
+## simulate data
+# general settings
+set.seed(1252105)
+n_obs <- 100
+num_vars <- 5
+
+# predictors
+pred_vals <- matrix(rnorm(n_obs * num_vars), ncol = num_vars)
+pred_vals <- cbind(rep(1, n_obs), pred_vals)
+
+# coefficients
+beta_vals <- rnorm(num_vars + 1)
+
+# set some betas to zero
+num_zero <- ceiling(num_vars / 2)
+beta_vals[sample(seq_len(num_vars), size = num_zero, replace = FALSE)] <- 0.0
+
+# response
+y <- pred_vals %*% beta_vals + rnorm(n_obs, mean = 0.0, sd = 0.5)
+
+## setup greta model
+I <- variable(dim = (num_vars + 1)) # dummy variable for a discrete variable (with no prior)
+beta_est <- normal(mean = 0.0, sd = 10.0, dim = (num_vars + 1))
+mu <- pred_vals %*% (I * beta_est)
+distribution(y) <- normal(mu, sd = (sd(y) / 2))
 
 # get the model
-m <- model(mu)
+m <- model(mu, beta_est, I)
 
-# hack to find out which element corresponds to I
-# will need finessing for vectors
-discrete_name <- m$dag$tf_name(I$node)
-discrete <- names(m$dag$example_parameters()) == discrete_name
-
-# update discrete and continuous parameters separately
-params <- m$dag$example_parameters()
-params[!discrete] <- rnorm(sum(!discrete))
-params[discrete] <- rbinom(sum(discrete), 1, 0.5)
-
-# send parameters and get log density back
-m$dag$send_parameters(params[1:2])
-m$dag$log_density()
-
-# you can still use the gradients of the continuous variables for HMC, if you want
-m$dag$gradients()[!discrete]
+# sample from model
+samples <- mcmcDiscrete(m = m,
+                        discrete_vars = "I",
+                        n_samples = 100, n_burnin = 100,
+                        w_size = 0.5,
+                        lower = -5, upper = 5, max_iter = 100)
