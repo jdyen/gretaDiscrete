@@ -11,8 +11,8 @@ source("./R/mcmcDiscrete.R")
 ## simulate data
 # general settings
 set.seed(1252105)
-n_obs <- 100
-num_vars <- 5
+n_obs <- 1000
+num_vars <- 20
 
 # predictors
 pred_vals <- matrix(rnorm(n_obs * num_vars), ncol = num_vars)
@@ -22,7 +22,7 @@ pred_vals <- cbind(rep(1, n_obs), pred_vals)
 beta_vals <- rnorm(num_vars + 1)
 
 # set some betas to zero
-num_zero <- ceiling(num_vars / 2)
+num_zero <- num_vars - ceiling(num_vars / 3)
 beta_vals[sample(seq_len(num_vars), size = num_zero, replace = FALSE)] <- 0.0
 
 # response
