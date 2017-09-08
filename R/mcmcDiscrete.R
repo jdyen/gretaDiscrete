@@ -124,7 +124,7 @@ mcmcDiscrete <- function (model,
                            control = con)
   
   # if this was successful, trash the stash, prepare and return the draws
-  rm('trace_stash', envir = greta_stash)
+  rm('trace_stash', envir = greta:::greta_stash)
   greta:::prepare_draws(draws)
 }
 
@@ -192,7 +192,7 @@ samplerDiscrete <- function(dag,
   
   # if anything goes awry, stash the trace so far
   if (stash)
-    on.exit(stash_trace(trace))
+    on.exit(greta:::stash_trace(trace))
   
   accept_count <- 0
   for (i in seq_len(n_samples)) {
