@@ -11,8 +11,8 @@ source("./R/mcmcDiscrete.R")
 ## simulate data
 # general settings
 set.seed(1252105)
-n_obs <- 1000
-num_vars <- 100
+n_obs <- 100
+num_vars <- 10
 
 # predictors
 pred_vals <- matrix(rnorm(n_obs * num_vars), ncol = num_vars)
@@ -41,9 +41,16 @@ m <- model(mu, beta_est, I)
 # sample from model
 samples <- mcmcDiscrete(model = m,
                         discrete_vars = "I",
-                        n_samples = 500,
-                        warmup = 500,
+                        n_samples = 200,
+                        warmup = 200,
                         control = list(lower = -5.0,
                                        upper = 5.0,
                                        w_size = 0.5,
                                        max_iter = 100))
+
+# summarise fitted model
+fitted_mean <- apply(samples[[1]], 2, mean)
+print(round(fitted_mean[grep("beta", names(fitted_mean))], 2))
+print(round(beta_vals, 2))
+plot(fitted_mean[grep("beta", names(fitted_mean))] ~ beta_vals)
+print(cor(y, fitted_mean[grep("mu", names(fitted_mean))]) ** 2)
