@@ -77,7 +77,8 @@ mcmcDiscrete <- function (model,
               upper = 10.0,
               w_size = 1.0,
               max_iter = 10000,
-              epsilon = 0.005)
+              epsilon = 0.005,
+              slice_eps = 0.0001)
   
   
   # update them with user overrides
@@ -146,7 +147,8 @@ samplerDiscrete <- function(dag,
                                            upper = 10.0,
                                            w_size = 1.0,
                                            max_iter = 10000,
-                                           epsilon = 0.005)) {
+                                           epsilon = 0.005,
+                                           slice_eps = 0.0001)) {
   # setup progress bar
   if (verbose) {
     greta:::iterate_progress_bar(pb = pb, it = 0, rejects = 0)
@@ -157,7 +159,6 @@ samplerDiscrete <- function(dag,
   discrete_name <- sapply(discrete_vars, function(x) dag$tf_name(get(x)$node))
   discrete <- grepl(paste(discrete_name, collapse = "|"), names(params))
   
-  ## setup continuous sampler
   # unpack options
   Lmin <- control$Lmin
   Lmax <- control$Lmax
@@ -166,7 +167,9 @@ samplerDiscrete <- function(dag,
   upper <- control$upper
   w_size <- control$w_size
   max_iter <- control$max_iter
-  # tuning parameters
+  slice_eps <- control$slice_eps
+  
+  # setup continuous sampler tuning parameters
   accept_group = 50
   target_acceptance = 0.651
   kappa = 0.75
@@ -303,7 +306,7 @@ samplerDiscrete <- function(dag,
         } else {
           r1 <- xs
         }
-        if ((r1 - r0) < 0.0001) {  ## make this a threshold relative to magnitude of r values
+        if ((r1 - r0) < slice_eps) {
           xs <- r0
           break
         }

@@ -10,7 +10,7 @@ source("./R/mcmcDiscrete.R")
 
 ## simulate data
 # general settings
-set.seed(1252105)
+set.seed(1252100)
 n_obs <- 100
 num_vars <- 10
 
@@ -41,8 +41,8 @@ m <- model(mu, beta_est, I)
 # sample from model
 samples <- mcmcDiscrete(model = m,
                         discrete_vars = "I",
-                        n_samples = 200,
-                        warmup = 200,
+                        n_samples = 100,
+                        warmup = 100,
                         control = list(lower = -5.0,
                                        upper = 5.0,
                                        w_size = 0.5,
@@ -50,7 +50,11 @@ samples <- mcmcDiscrete(model = m,
 
 # summarise fitted model
 fitted_mean <- apply(samples[[1]], 2, mean)
-print(round(fitted_mean[grep("beta", names(fitted_mean))], 2))
-print(round(beta_vals, 2))
-plot(fitted_mean[grep("beta", names(fitted_mean))] ~ beta_vals)
-print(cor(y, fitted_mean[grep("mu", names(fitted_mean))]) ** 2)
+beta_est <- cbind(round(fitted_mean[grep("beta", names(fitted_mean))], 2),
+                  round(beta_vals, 2),
+                  fitted_mean[grep("I", names(fitted_mean))])
+colnames(beta_est) <- c("Estimated", "Real", "Pr(inclusion)")
+print(beta_est)
+cat(paste0("The fitted r2 is ",
+           round(cor(y, fitted_mean[grep("mu", names(fitted_mean))]) ** 2, 2),
+           "\n"))
