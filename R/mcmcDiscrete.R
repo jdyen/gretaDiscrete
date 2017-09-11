@@ -317,8 +317,8 @@ samplerDiscrete <- function(dag,
       }
       x1 <- xs
       params[discrete][j] <- ifelse(x1 > 0, 1, 0)
-    }    
-    
+    }
+
     # either way, store density and location of target parameters straight from the graph
     # reset dag parameters for extracting the trace
     if (i %% thin == 0) {

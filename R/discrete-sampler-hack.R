@@ -30,8 +30,10 @@ y <- pred_vals %*% beta_vals + rnorm(n_obs, mean = 0.0, sd = 0.5)
 
 ## setup greta model
 I <- variable(dim = (num_vars + 1)) # dummy variable for a discrete variable (with no prior)
+#beta_sd <- 10 * ones(num_vars + 1)
 beta_sd <- I * 100.0 + (1 - I) * 0.01
 beta_est <- normal(mean = zeros(num_vars + 1), sd = beta_sd, dim = (num_vars + 1))
+#beta_est <- I * beta_est
 mu <- pred_vals %*% beta_est
 distribution(y) <- normal(mu, sd = (sd(y) / 2))
 
@@ -41,8 +43,8 @@ m <- model(mu, beta_est, I)
 # sample from model
 samples <- mcmcDiscrete(model = m,
                         discrete_vars = "I",
-                        n_samples = 100,
-                        warmup = 100,
+                        n_samples = 1000,
+                        warmup = 1000,
                         control = list(lower = -5.0,
                                        upper = 5.0,
                                        w_size = 0.5,
