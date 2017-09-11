@@ -266,57 +266,11 @@ samplerDiscrete <- function(dag,
       x1 <- params[discrete][j]
       dag$send_parameters(params)
       logy <- dag$log_density()
-      logz <- logy - rexp(1)
-      u <- runif(1) * w_size
-      L <- x1 - u
-      R <- x1 + (w_size - u);
-      params[discrete][j] <- ifelse(L > 0, 1, 0)
+      params[discrete][j] <- 1 - x1
       dag$send_parameters(params)
-      log_dens_tmp <- dag$log_density()
-      while ((L > lower) & (log_dens_tmp > logz)) {
-        L <- L - w_size
-        params[discrete][j] <- ifelse(L > 0, 1, 0)
-        dag$send_parameters(params)
-        log_dens_tmp <- dag$log_density()
-      }
-      
-      params[discrete][j] <- ifelse(R > 0, 1, 0)
-      dag$send_parameters(params)
-      log_dens_tmp <- dag$log_density()
-      while ((R < upper) & (log_dens_tmp > logz)) {
-        R <- R + w_size
-        params[discrete][j] <- ifelse(R > 0, 1, 0)
-        dag$send_parameters(params)
-        log_dens_tmp <- dag$log_density()
-      }
-      
-      # sample until draw is in the correct range
-      r0 <- max(L, lower)
-      r1 <- min(R, upper)
-      
-      for (k in seq_len(max_iter)) {
-        xs <- runif(1, r0, r1)
-        params[discrete][j] <- ifelse(xs > 0, 1, 0)
-        dag$send_parameters(params)
-        logys <- dag$log_density()
-        if (logys > logz)
-          break
-        if (xs < x1) {
-          r0 <- xs
-        } else {
-          r1 <- xs
-        }
-        if ((r1 - r0) < slice_eps) {
-          xs <- r0
-          break
-        }
-        if (k == max_iter) {
-          xs <- x1
-          break
-        }
-      }
-      x1 <- xs
-      params[discrete][j] <- ifelse(x1 > 0, 1, 0)
+      logz <- dag$log_density()
+      logt <- logy - rexp(1)
+      params[discrete][j] <- ifelse(logt > logz, x1, 1 - x1)
     }
 
     # either way, store density and location of target parameters straight from the graph
